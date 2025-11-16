@@ -1,22 +1,19 @@
 "use client";
 import React, { useState } from "react";
-import { Schema } from "../../amplify/data/resource";
 
 const Comments = ({
   addComment,
-  post,
-  paramsId,
+  postId,
 }: {
-  addComment: (content: string, post: Schema["Post"]['type'], paramsId: string) => void;
-  post: Schema["Post"]['type'];
-  paramsId: string;
+  addComment: (content: string, postId: string) => void | Promise<void>;
+  postId: string;
 }) => {
   const [comment, setComment] = useState("");
 
   const add = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setComment("");
-    addComment(comment, post, paramsId);
+    addComment(comment, postId);
   };
   return (
     <form onSubmit={add} className="p-4 flex flex-col items-center gap-4">

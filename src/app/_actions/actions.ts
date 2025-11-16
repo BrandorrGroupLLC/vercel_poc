@@ -1,48 +1,43 @@
 "use server";
 
-import { cookieBasedClient } from "@/utils/amplify-utils";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Schema } from "../../../amplify/data/resource";
+import {
+  createCommentRecord,
+  createPostRecord,
+  deleteCommentById,
+  deletePostById,
+} from "@/lib/db";
 
 export async function deleteComment(formData: FormData) {
   const id = formData.get("id")?.toString();
+  const postId = formData.get("postId")?.toString();
   if (!id) return;
-  const { data: deletedComment } =
-    await cookieBasedClient.models.Comment.delete({
-      id,
-    });
-  console.log("deleted", deletedComment);
+  await deleteCommentById(id);
+  if (postId) {
+    revalidatePath(`/posts/${postId}`);
+  }
 }
 
 export async function addComment(
   content: string,
-  post: Schema["Post"]["type"],
-  paramsId: string
+  postId: string
 ) {
   if (content.trim().length === 0) return;
-  const { data: comment } = await cookieBasedClient.models.Comment.create({
-    postId: post.id,
-    content,
-  });
-
-  console.log("got comment", comment);
-  revalidatePath(`/post/${paramsId}`);
+  await createCommentRecord({ postId, content });
+  revalidatePath(`/posts/${postId}`);
 }
 
 export async function onDeletePost(id: string) {
-  const { data, errors } = await cookieBasedClient.models.Post.delete({
-    id,
-  });
-
-  console.log("data deleted", data, errors);
+  if (!id) return;
+  await deletePostById(id);
   revalidatePath("/");
 }
 
 export async function createPost(formData: FormData) {
-  const { data, errors } = await cookieBasedClient.models.Post.create({
-    title: formData.get("title")?.toString() || "",
-  });
-  console.log("create post data", data, errors);
+  const title = formData.get("title")?.toString().trim();
+  if (!title) return;
+  await createPostRecord(title);
+  revalidatePath("/");
   redirect("/");
 }

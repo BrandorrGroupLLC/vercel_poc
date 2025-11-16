@@ -1,5 +1,5 @@
 {
-  "name": "code-first-app",
+  "name": "vercel-standalone-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,16 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@aws-amplify/adapter-nextjs": "^1.0.8",
-    "@aws-amplify/ui-react": "^6.0.7",
-    "aws-amplify": "^6.0.8",
+    "@vercel/postgres": "^0.8.0",
     "next": "14.0.4",
     "react": "^18",
     "react-dom": "^18"
   },
   "devDependencies": {
-    "@aws-amplify/backend": "^1.0.4",
-    "@aws-amplify/backend-cli": "^1.2.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
