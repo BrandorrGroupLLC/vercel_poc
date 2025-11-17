@@ -1,64 +1,60 @@
-import { sql } from "@vercel/postgres";
+import { PrismaClient, Comment, Post } from "@prisma/client";
 
-export type PostRecord = {
-  id: string;
-  title: string;
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
 };
 
-export type CommentRecord = {
-  id: string;
-  content: string;
-  post_id: string;
-};
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+  });
 
-const missingDbConnectionMessage =
-  "Missing Postgres connection. Set the `POSTGRES_URL` env variable in Vercel.";
-
-function assertDatabaseConfigured() {
-  if (!process.env.POSTGRES_URL) {
-    throw new Error(missingDbConnectionMessage);
-  }
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
 }
 
+export type PostRecord = Pick<Post, "id" | "title">;
+export type CommentRecord = Pick<Comment, "id" | "content" | "postId">;
+
 export async function listPosts(): Promise<PostRecord[]> {
-  assertDatabaseConfigured();
-  const result = await sql<PostRecord>`SELECT id, title FROM posts ORDER BY created_at DESC`;
-  return result.rows;
+  return prisma.post.findMany({
+    select: { id: true, title: true },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 export async function getPostById(id: string): Promise<PostRecord | null> {
-  assertDatabaseConfigured();
-  const result = await sql<PostRecord>`SELECT id, title FROM posts WHERE id = ${id} LIMIT 1`;
-  return result.rows[0] ?? null;
+  return prisma.post.findUnique({
+    where: { id },
+    select: { id: true, title: true },
+  });
 }
 
 export async function createPostRecord(title: string): Promise<PostRecord> {
-  assertDatabaseConfigured();
   if (!title.trim()) {
     throw new Error("Title cannot be empty");
   }
-  const result = await sql<PostRecord>`INSERT INTO posts (title) VALUES (${title}) RETURNING id, title`;
-  return result.rows[0];
+  return prisma.post.create({
+    data: { title: title.trim() },
+    select: { id: true, title: true },
+  });
 }
 
 export async function deletePostById(id: string): Promise<void> {
-  assertDatabaseConfigured();
   if (!id) return;
-  await sql`DELETE FROM comments WHERE post_id = ${id}`;
-  await sql`DELETE FROM posts WHERE id = ${id}`;
+  await prisma.comment.deleteMany({ where: { postId: id } });
+  await prisma.post.deleteMany({ where: { id } });
 }
 
 export async function listCommentsForPost(
   postId: string
 ): Promise<CommentRecord[]> {
-  assertDatabaseConfigured();
-  const result = await sql<CommentRecord>`
-    SELECT id, content, post_id
-    FROM comments
-    WHERE post_id = ${postId}
-    ORDER BY created_at DESC
-  `;
-  return result.rows;
+  return prisma.comment.findMany({
+    where: { postId },
+    select: { id: true, content: true, postId: true },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 export async function createCommentRecord({
@@ -68,20 +64,16 @@ export async function createCommentRecord({
   postId: string;
   content: string;
 }): Promise<CommentRecord> {
-  assertDatabaseConfigured();
   if (!content.trim()) {
     throw new Error("Comment cannot be empty");
   }
-  const result = await sql<CommentRecord>`
-    INSERT INTO comments (post_id, content)
-    VALUES (${postId}, ${content})
-    RETURNING id, content, post_id
-  `;
-  return result.rows[0];
+  return prisma.comment.create({
+    data: { postId, content: content.trim() },
+    select: { id: true, content: true, postId: true },
+  });
 }
 
 export async function deleteCommentById(id: string): Promise<void> {
-  assertDatabaseConfigured();
   if (!id) return;
-  await sql`DELETE FROM comments WHERE id = ${id}`;
+  await prisma.comment.deleteMany({ where: { id } });
 }
